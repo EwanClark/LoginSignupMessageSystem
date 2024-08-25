@@ -73,7 +73,7 @@ function SignupButtonClicked() {
         .then(responseData => {
             console.log('Success:', responseData);
             alert(`User signed up successfully! as ${UsernameInput}`);
-            window.location.href = "bubllz.com/login";
+            window.location.href = "https://bubllz.com/login";
         })
         .catch(error => {
             console.error('There was a problem with the fetch operation: ', error);
