@@ -160,8 +160,6 @@ app.post('/message', (req, res) => {
             const fullMessage = { username, message: messageData };
             console.log('Sending message to clients:', fullMessage);
 
-            messages.push(fullMessage);
-
             // Respond to the sender immediately
             res.status(200).json({ message: fullMessage });
 
