@@ -71,10 +71,16 @@ async function sendMessage() {
         if (response.status === 401) {
             alert('You are not logged in. Please log in first.');
             window.location.href = 'https://bubllz.com/login/';
-        }
-        if (response.status === 413) {
+        } else if (response.status === 413) {
             alert('Message is too large.');
             return;
+        } else {
+            // Optionally handle the response here if needed
+            const data = await response.json();
+            console.log('Message sent:', data.message);
+
+            // Immediately poll to check for the message sent
+            poll();
         }
     } catch (error) {
         console.error('Sending message error:', error);
