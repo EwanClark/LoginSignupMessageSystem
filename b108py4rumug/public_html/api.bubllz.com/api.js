@@ -157,17 +157,22 @@ app.post('/message', (req, res) => {
             }
             const username = results[0].Username;
 
-            console.log('Sending message to clients:', { username, message: messageData });
+            const fullMessage = { username, message: messageData };
+            console.log('Sending message to clients:', fullMessage);
 
-            messages.push({ username, message: messageData });
+            messages.push(fullMessage);
 
-            res.status(200).end();
+            // Respond to the sender immediately
+            res.status(200).json({ message: fullMessage });
 
+            // Broadcast the message to all other connected clients
             clients.forEach(client => {
                 if (!client.res.finished) {
-                    client.res.json({ message: { username, message: messageData } });
+                    client.res.json({ message: fullMessage });
                 }
             });
+
+            // Clear the clients array after broadcasting
             clients = [];
         }
     );
