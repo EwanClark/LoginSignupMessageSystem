@@ -1,1 +1,1 @@
-For details go to bubllz.com/howitworks
+For details go to https://bubllz.com/howitworks
