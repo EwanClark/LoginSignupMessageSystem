@@ -1,12 +1,13 @@
-const express = require('express');
-const cors = require('cors');
-const mysql = require('mysql2');
-const rateLimit = require('express-rate-limit');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+import express from 'express';
+import cors from 'cors';
+import mysql from 'mysql2';
+import rateLimit from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 const app = express();
-require('dotenv').config();
-
+dotenv.config();
 const port = 4000
 const ip = process.env.IP;
 
@@ -184,6 +185,122 @@ app.get('/poll', (req, res) => {
         clients.push({ req, res });
     }
 });
+
+app.post('/getattrs', async (req, res) => {
+    const { myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi } = req.body;
+    
+    try {
+        const uuid = await retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi);
+        
+        if (uuid) {
+            res.status(200).json({ uuid });
+        } else {
+            res.status(404).json({ message: 'No matching UUID found' });
+        }
+    } catch (err) {
+        console.error('Error in /getattrs route:', err);
+        res.status(500).json({ error: 'An error occurred while retrieving the UUID' });
+    }
+});
+
+async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi) {
+    const headers = { 'Content-Type': 'application/json' };
+    let uuids = [];
+    let ratelimit = 0;
+    let i = 0;
+    let j = crimsonislepeicetocheckapi === 'all' ? 50 : 10;
+    let piecetocheck = crimsonislepeicetocheckapi.toUpperCase() + "_" + minecraftarmourpeicetocheckapi.toUpperCase();
+
+    while (i < j) {
+        if (crimsonislepeicetocheckapi === "all") {
+            if (i > 40) piecetocheck = "HOLLOW_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 30) piecetocheck = "FERVOR_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 20) piecetocheck = "TERROR_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 10) piecetocheck = "AURORA_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else piecetocheck = "CRIMSON_" + minecraftarmourpeicetocheckapi.toUpperCase();
+        }
+
+        const urlToGetUuids = `https://sky.coflnet.com/api/auctions/tag/${piecetocheck}/active/overview?orderBy=LOWEST_PRICE&page=${i}`;
+        
+        let response = await fetch(urlToGetUuids, { headers });
+        
+        if (response.status === 429) {
+            if (ratelimit >= 3) {
+                ratelimit = 0;
+                console.log(`Rate limited 3 times. Retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                continue;
+            } else {
+                ratelimit += 1;
+                console.log("Rate limit hit. Waiting 0.5 seconds...");
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue;
+            }
+        }
+
+        let responseJson;
+        try {
+            responseJson = await response.json();
+        } catch (error) {
+            console.log(`Error decoding JSON from ${urlToGetUuids}: ${error}`);
+            continue;
+        }
+
+        if (Array.isArray(responseJson)) {
+            uuids = responseJson.map(item => item.uuid).filter(uuid => uuid);
+
+            for (let uuid of uuids) {
+                const urlToGetAttrs = `https://sky.coflnet.com/api/auction/${uuid}`;
+
+                try {
+                    response = await fetch(urlToGetAttrs, { headers });
+
+                    if (response.status === 429) {
+                        if (ratelimit >= 3) {
+                            ratelimit = 0;
+                            console.log(`Rate limited 3 times. Retrying...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            continue;
+                        } else {
+                            ratelimit += 1;
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                            continue;
+                        }
+                    }
+
+                    let attributes;
+                    try {
+                        const data = await response.json();
+                        attributes = data.nbtData?.data?.attributes || {};
+                    } catch (error) {
+                        console.log(`Error decoding JSON from ${urlToGetAttrs}: ${error}`);
+                        continue;
+                    }
+
+                    if (myattribute2) {
+                        if (attributes[myattribute1] === lvl1 && attributes[myattribute2] === lvl2) {
+                            return uuid;
+                        }
+                    } else {
+                        if (attributes[myattribute1] === lvl1) {
+                            return uuid;
+                        }
+                    }
+
+                } catch (error) {
+                    console.log(`Request failed for ${urlToGetAttrs}: ${error}`);
+                    continue;
+                }
+            }
+        }
+
+        uuids = [];
+        i += 1;
+    }
+
+    return null;
+}
+
 
     
 app.get('/', (req, res) => {
