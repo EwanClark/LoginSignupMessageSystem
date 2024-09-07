@@ -1,6 +1,0 @@
-{
-    "CodeGPT.apiKey": "CodeGPT Plus Beta",
-    "terminal.integrated.env.windows": {
-    "PATH": "C:\\php;${env:PATH}"
-}
-}
