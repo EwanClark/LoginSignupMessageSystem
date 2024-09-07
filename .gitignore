@@ -1,2 +1,4 @@
 .env
 API, bubllz.com.pem
+.gitignore
+.vscode
