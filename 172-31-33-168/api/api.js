@@ -301,8 +301,33 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
     return null;
 }
 
+app.get('/validurl', (req, res) => {
+    try {
+        new url(res.body.url)
+        res.status(200).json({ 'Validurl': true });
+    }
+    catch (err)
+    {
+        res.status(400).json({ 'Validurl': false });
+    }
+});
 
+app.get('/checkshorturls', (req, res) => {
+    // check token
+    // get all short urls of the user with that token
     
+});
+app.get('/addshorturl', (req, res) => {
+    // check auth key
+    // make a unique short url code
+    // add the short url with, oldurl, shorturl, token
+});
+app.get('/removeshorturl', (req, res) => {
+    // check token
+    // check the short url because they will be unique
+    // remove the short url
+});
+
 app.get('/', (req, res) => {
     res.send('This is an API, not a website! You need to run api.bubllz.com/{your request}');
 });

@@ -1,0 +1,120 @@
+/* Import Google Font "Roboto" */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* Reset some default browser styles */
+body, h1, p, input, button {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto', sans-serif; /* Apply the Roboto font */
+}
+
+/* General Body Styles */
+body {
+    background-color: #f4f4f4; /* Light background color */
+    color: #333; /* Dark text color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Container for the content */
+.container {
+    background-color: #fff; /* White background for the container */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    text-align: center;
+}
+
+/* Title Styles */
+h1 {
+    font-size: 2em;
+    color: #333; /* Dark color for the title */
+    margin-bottom: 20px;
+}
+
+/* Input Styles */
+input[type="text"] {
+    width: calc(100% - 22px);
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Button Styles */
+button {
+    padding: 10px 20px;
+    background-color: #007bff; /* Blue background color */
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* URL Display Styles */
+.shorturl {
+    margin-top: 20px;
+}
+
+.url-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.url-item {
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 7px;
+    margin-bottom: 10px;
+    width: 97.6%;
+    text-align: left;
+    font-family: monospace;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #121212; /* Dark background color */
+    color: #e0e0e0; /* Light text color */
+}
+
+body.dark-mode .container {
+    background-color: #1e1e1e; /* Darker background for the container */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode h1 {
+    color: #e0e0e0; /* Light color for the title */
+}
+
+body.dark-mode input[type="text"] {
+    background-color: #333; /* Dark background for inputs */
+    border: 1px solid #555; /* Darker border for inputs */
+    color: #e0e0e0; /* Light text color for inputs */
+}
+
+body.dark-mode button {
+    background-color: #0056b3; /* Darker blue background color */
+}
+
+body.dark-mode button:hover {
+    background-color: #003f7f; /* Even darker blue on hover */
+}
+
+body.dark-mode .url-item {
+    background-color: #333; /* Dark background for URL items */
+    border: 1px solid #555; /* Darker border for URL items */
+    color: #e0e0e0; /* Light text color for URL items */
+}
