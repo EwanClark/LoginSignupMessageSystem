@@ -1,1 +1,1 @@
-# Visit https://bubllz.com/howitworks for more info!
+# Visit https://bubllz.com/howitworks For more infomation.
