@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import https from "https";
+import { URL } from 'url'; 
 const app = express();
 dotenv.config();
 const port = 4000
@@ -302,13 +304,42 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
 }
 
 app.get('/validurl', (req, res) => {
-    try {
-        new url(res.body.url)
-        res.status(200).json({ 'Validurl': true });
+    // Check if the URL query parameter is present
+    if (!req.query.url) {
+        return res.status(400).json({ 'Error': 'URL parameter is missing' });
     }
-    catch (err)
-    {
-        res.status(400).json({ 'Validurl': false });
+
+    try {
+        // Parse the URL
+        const parsedUrl = new URL(req.query.url);
+
+        // Set options for the https.get request
+        const options = {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || 443,
+            path: parsedUrl.pathname + (parsedUrl.search || ''), // Include search params if present
+            method: 'GET',
+            rejectUnauthorized: false // Disable SSL certificate validation
+        };
+
+        // Make the https request
+        https.get(options, (response) => {
+            const { statusCode } = response;
+
+            if (statusCode >= 200 && statusCode < 300) {
+                res.status(200).json({ 'Validurl': true });
+            } else {
+                res.status(250).json({ 'Validurl': false });
+            }
+        }).on('error', (err) => {
+            console.log('Error:', err.message);
+            res.status(250).json({ 'Error': err.message });
+        });
+
+    } catch (err) {
+        // Handle any errors that occurred during URL parsing or request
+        console.error('Error parsing URL:', err.message);
+        res.status(250).json({ 'Error': 'Invalid URL format' });
     }
 });
 
