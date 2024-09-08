@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import https from "https";
 import { URL } from 'url'; 
+import { connect } from 'http2';
 const app = express();
 dotenv.config();
 const port = 4000
@@ -29,7 +30,7 @@ app.use(express.json());
 app.use(limiter);
 let messages = [];
 let clients = [];
-
+const excludedRoutes = ['/login', '/signup', '/message', '/poll', '/validurl', '/checkshorturls', '/addshorturl', '/removeshorturl', '/getattrs'];
 
 // Database connection
 let connection;
@@ -42,7 +43,7 @@ function handleDisconnect() {
         database: process.env.DB_DATABASE,
         port: process.env.DB_PORT,
     });
-
+    
     connection.connect((err) => {
         if (err) {
             console.error('Error connecting to database:', err);
@@ -51,7 +52,7 @@ function handleDisconnect() {
             console.log('Connected to database');
         }
     });
-
+    
     connection.on('error', (err) => {
         console.error('Database error:', err);
         if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
@@ -65,6 +66,30 @@ function handleDisconnect() {
 }
 
 handleDisconnect();
+
+app.get('/:anything', (req, res, next) => {
+  const { anything } = req.params;
+
+  // Check if the route is in the excluded list
+  if (excludedRoutes.includes(`/${anything.toLowerCase()}`)) {
+    return next(); // Skip this middleware and go to the next handler
+  }
+
+    connection.query(
+        `SELECT * FROM shorturls WHERE shorturl = ?`,
+        [anything],
+        (err, results) => {
+            if (err) {
+                console.error('Database query error:', err.stack);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (results.length === 0) {
+                return res.status(404).json({ error: 'Short URL not found' });
+            }
+            res.redirect(results[0].redirecturl);
+        }
+    )
+});
 
 app.post('/signup', async (req, res) => {
     const userData = req.body;
@@ -346,28 +371,48 @@ app.get('/validurl', (req, res) => {
 app.get('/checkshorturls', (req, res) => {
     // check token
     // get all short urls of the user with that token
-    
 });
-app.get('/addshorturl', (req, res) => {
+app.post('/addshorturl', (req, res) => {
     // check auth key
     // make a unique short url code
     // add the short url with, oldurl, shorturl, token
+    const userData = req.body;
+    const token = req.headers.token;
 
+    connection.query(
+        'SELECT * FROM Users WHERE token = ?',
+        [token],
+        (err, results) => {
+            if (err) {
+                console.error('Database query error:', err.stack);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (results.length === 0) {
+                return res.status(401).json({ error: 'Invalid token or session expired.' });
+            }
+            const userid = results[0].ID;
+            const redirecturl = userData.redirecturl;
+            const newshorturl = userid + crypto.randomBytes(2).toString('hex');
 
-    
+    connection.query(      
+        `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
+        [redirecturl, newshorturl, token]
+        );
+
+    res.status(200).json({ message: newshorturl });
+        }
+    );
 });
-app.get('/removeshorturl', (req, res) => {
+
+app.post('/removeshorturl', (req, res) => {
     // check token
     // check the short url because they will be unique
     // remove the short url
 });
 
-app.get('/', (req, res) => {
-    res.send('This is an API, not a website! You need to run api.bubllz.com/{your request}');
-});
-
-app.post('/', (req, res) => {
-    res.send('This is an API, not a website! You need to run api.bubllz.com/{your request}');
+// Fallback route for non-existing routes
+app.use('*', (req, res) => {
+  res.status(404).send('Route not found.');
 });
 
 app.listen(port, ip, () => {
