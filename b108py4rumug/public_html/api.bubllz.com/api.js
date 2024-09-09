@@ -1,36 +1,49 @@
-import express from 'express';
-import cors from 'cors';
-import mysql from 'mysql2';
-import rateLimit from 'express-rate-limit';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import fetch from 'node-fetch';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import mysql from "mysql2";
+import rateLimit from "express-rate-limit";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
 import https from "https";
-import { URL } from 'url'; 
-import { connect } from 'http2';
+import { URL } from "url";
+import { connect } from "http2";
+
 const app = express();
 dotenv.config();
-const port = 4000
+const port = 4000;
 const ip = process.env.IP;
 
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 200,
-    message: 'Too many requests from this IP, please try again after 1 minute',
+    message: "Too many requests from this IP, please try again after 1 minute",
 });
 
-app.set('trust proxy', 1);
-app.use(cors({
-    origin: 'https://bubllz.com', // Replace with your client's domain
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'token'],
-}));
+app.set("trust proxy", 1);
+app.use(
+    cors({
+        origin: "https://bubllz.com", // Replace with your client's domain
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type", "Authorization", "token"],
+    })
+);
 app.use(express.json());
 app.use(limiter);
 let messages = [];
 let clients = [];
-const excludedRoutes = ['/login', '/signup', '/message', '/poll', '/validurl', '/checkshorturls', '/addshorturl', '/removeshorturl', '/getattrs'];
+const excludedRoutes = [
+    "/login",
+    "/signup",
+    "/message",
+    "/poll",
+    "/validurl",
+    "/getshorturls",
+    "/addshorturl",
+    "/removeshorturl",
+    "/getattrs",
+];
 
 // Database connection
 let connection;
@@ -43,22 +56,22 @@ function handleDisconnect() {
         database: process.env.DB_DATABASE,
         port: process.env.DB_PORT,
     });
-    
+
     connection.connect((err) => {
         if (err) {
-            console.error('Error connecting to database:', err);
+            console.error("Error connecting to database:", err);
             setTimeout(handleDisconnect, 2000); // Reconnect after 2 seconds
         } else {
-            console.log('Connected to database');
+            console.log("Connected to database");
         }
     });
-    
-    connection.on('error', (err) => {
-        console.error('Database error:', err);
-        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
+
+    connection.on("error", (err) => {
+        console.error("Database error:", err);
+        if (err.code === "PROTOCOL_CONNECTION_LOST" || err.code === "ECONNRESET") {
             handleDisconnect(); // Reconnect on connection loss or reset
         } else {
-            console.error('Unhandled error:', err);
+            console.error("Unhandled error:", err);
             // Optionally, decide whether to throw the error or not
             // For now, we'll log it and keep the application running
         }
@@ -67,31 +80,31 @@ function handleDisconnect() {
 
 handleDisconnect();
 
-app.get('/:anything', (req, res, next) => {
-  const { anything } = req.params;
+app.get("/:anything", (req, res, next) => {
+    const { anything } = req.params;
 
-  // Check if the route is in the excluded list
-  if (excludedRoutes.includes(`/${anything.toLowerCase()}`)) {
-    return next(); // Skip this middleware and go to the next handler
-  }
+    // Check if the route is in the excluded list
+    if (excludedRoutes.includes(`/${anything.toLowerCase()}`)) {
+        return next(); // Skip this middleware and go to the next handler
+    }
 
     connection.query(
         `SELECT * FROM shorturls WHERE shorturl = ?`,
         [anything],
         (err, results) => {
             if (err) {
-                console.error('Database query error:', err.stack);
-                return res.status(500).json({ error: 'Database error' });
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
             }
             if (results.length === 0) {
-                return res.status(404).json({ error: 'Short URL not found' });
+                return res.status(404).json({ error: "Short URL not found" });
             }
             res.redirect(results[0].redirecturl);
         }
-    )
+    );
 });
 
-app.post('/signup', async (req, res) => {
+app.post("/signup", async (req, res) => {
     const userData = req.body;
 
     try {
@@ -100,25 +113,31 @@ app.post('/signup', async (req, res) => {
 
         // Check database for existing username
         connection.query(
-            'SELECT * FROM Users WHERE Username = ?',
+            "SELECT * FROM Users WHERE Username = ?",
             [userData.Username],
             (err, results) => {
                 if (err) {
-                    console.error('Error executing query:', err.stack);
-                    return res.status(500).json({ error: 'Database error' });
+                    console.error("Error executing query:", err.stack);
+                    return res.status(500).json({ error: "Database error" });
                 }
                 if (results.length > 0) {
-                    return res.status(400).json({ error: 'Username already exists' });
+                    return res.status(400).json({ error: "Username already exists" });
                 } else {
                     // Username does not exist, proceed with insertion
-                    const token = crypto.randomBytes(64).toString('hex');
+                    const token = crypto.randomBytes(64).toString("hex");
                     connection.query(
-                        'INSERT INTO Users (FirstName, LastName, Username, Password, token) VALUES (?, ?, ?, ?, ?)',
-                        [userData.FirstName, userData.LastName, userData.Username, hashedPassword, token],
+                        "INSERT INTO Users (FirstName, LastName, Username, Password, token) VALUES (?, ?, ?, ?, ?)",
+                        [
+                            userData.FirstName,
+                            userData.LastName,
+                            userData.Username,
+                            hashedPassword,
+                            token,
+                        ],
                         (err, results) => {
                             if (err) {
-                                console.error('Error executing query:', err.stack);
-                                return res.status(500).json({ error: 'Database error' });
+                                console.error("Error executing query:", err.stack);
+                                return res.status(500).json({ error: "Database error" });
                             }
                             res.json({ message: token });
                         }
@@ -127,24 +146,24 @@ app.post('/signup', async (req, res) => {
             }
         );
     } catch (err) {
-        console.error('Error hashing password:', err.stack);
-        return res.status(500).json({ error: 'Server error' });
+        console.error("Error hashing password:", err.stack);
+        return res.status(500).json({ error: "Server error" });
     }
 });
 
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
     const userData = req.body;
 
     connection.query(
-        'SELECT * FROM Users WHERE Username = ?',
+        "SELECT * FROM Users WHERE Username = ?",
         [userData.Username],
         (err, results) => {
             if (err) {
-                console.error('Error executing query:', err.stack);
-                return res.status(500).json({ error: 'Database error' });
+                console.error("Error executing query:", err.stack);
+                return res.status(500).json({ error: "Database error" });
             }
             if (results.length === 0) {
-                return res.status(401).json({ error: 'Invalid username or password.' });
+                return res.status(401).json({ error: "Invalid username or password." });
             }
 
             const storedHash = results[0].Password;
@@ -153,11 +172,13 @@ app.post('/login', (req, res) => {
             // Compare the provided password with the hashed password in the database
             bcrypt.compare(userData.Password, storedHash, (err, isMatch) => {
                 if (err) {
-                    console.error('Error comparing passwords:', err.stack);
-                    return res.status(500).json({ error: 'Server error' });
+                    console.error("Error comparing passwords:", err.stack);
+                    return res.status(500).json({ error: "Server error" });
                 }
                 if (!isMatch) {
-                    return res.status(401).json({ error: 'Invalid username or password.' });
+                    return res
+                        .status(401)
+                        .json({ error: "Invalid username or password." });
                 }
                 res.json({ message: `${token}` });
             });
@@ -165,34 +186,36 @@ app.post('/login', (req, res) => {
     );
 });
 
-app.post('/message', (req, res) => {
+app.post("/message", (req, res) => {
     const messageData = req.body.message;
     const token = req.headers.token;
 
-    console.log('Received token:', token);
-    console.log('Received message:', messageData);
+    console.log("Received token:", token);
+    console.log("Received message:", messageData);
 
     connection.query(
-        'SELECT * FROM Users WHERE token = ?',
+        "SELECT * FROM Users WHERE token = ?",
         [token],
         (err, results) => {
             if (err) {
-                console.error('Database query error:', err.stack);
-                return res.status(500).json({ error: 'Database error' });
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
             }
             if (results.length === 0) {
-                return res.status(401).json({ error: 'Invalid token or session expired.' });
+                return res
+                    .status(401)
+                    .json({ error: "Invalid token or session expired." });
             }
             const username = results[0].Username;
 
             const fullMessage = { username, message: messageData };
-            console.log('Sending message to clients:', fullMessage);
+            console.log("Sending message to clients:", fullMessage);
 
             // Respond to the sender immediately
             res.status(200).json({ message: fullMessage });
 
             // Broadcast the message to all other connected clients
-            clients.forEach(client => {
+            clients.forEach((client) => {
                 if (!client.res.finished) {
                     client.res.json({ message: fullMessage });
                 }
@@ -204,8 +227,7 @@ app.post('/message', (req, res) => {
     );
 });
 
-
-app.get('/poll', (req, res) => {
+app.get("/poll", (req, res) => {
     if (messages.length > 0) {
         res.json({ message: messages.shift() });
     } else {
@@ -213,54 +235,86 @@ app.get('/poll', (req, res) => {
     }
 });
 
-app.post('/getattrs', async (req, res) => {
-    const { myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi } = req.body;
-    
+app.post("/getattrs", async (req, res) => {
+    const {
+        myattribute1,
+        lvl1,
+        myattribute2,
+        lvl2,
+        crimsonislepeicetocheckapi,
+        minecraftarmourpeicetocheckapi,
+    } = req.body;
+
     try {
-        const uuid = await retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi);
-        
+        const uuid = await retrieveAuctionsAndCheckAttrs(
+            myattribute1,
+            lvl1,
+            myattribute2,
+            lvl2,
+            crimsonislepeicetocheckapi,
+            minecraftarmourpeicetocheckapi
+        );
+
         if (uuid) {
             res.status(200).json({ uuid });
         } else {
-            res.status(404).json({ message: 'No matching UUID found' });
+            res.status(404).json({ message: "No matching UUID found" });
         }
     } catch (err) {
-        console.error('Error in /getattrs route:', err);
-        res.status(500).json({ error: 'An error occurred while retrieving the UUID' });
+        console.error("Error in /getattrs route:", err);
+        res
+            .status(500)
+            .json({ error: "An error occurred while retrieving the UUID" });
     }
 });
 
-async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, lvl2, crimsonislepeicetocheckapi, minecraftarmourpeicetocheckapi) {
-    const headers = { 'Content-Type': 'application/json' };
+async function retrieveAuctionsAndCheckAttrs(
+    myattribute1,
+    lvl1,
+    myattribute2,
+    lvl2,
+    crimsonislepeicetocheckapi,
+    minecraftarmourpeicetocheckapi
+) {
+    const headers = { "Content-Type": "application/json" };
     let uuids = [];
     let ratelimit = 0;
     let i = 0;
-    let j = crimsonislepeicetocheckapi === 'all' ? 50 : 10;
-    let piecetocheck = crimsonislepeicetocheckapi.toUpperCase() + "_" + minecraftarmourpeicetocheckapi.toUpperCase();
+    let j = crimsonislepeicetocheckapi === "all" ? 50 : 10;
+    let piecetocheck =
+        crimsonislepeicetocheckapi.toUpperCase() +
+        "_" +
+        minecraftarmourpeicetocheckapi.toUpperCase();
 
     while (i < j) {
         if (crimsonislepeicetocheckapi === "all") {
-            if (i > 40) piecetocheck = "HOLLOW_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 30) piecetocheck = "FERVOR_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 20) piecetocheck = "TERROR_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 10) piecetocheck = "AURORA_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else piecetocheck = "CRIMSON_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            if (i > 40)
+                piecetocheck = "HOLLOW_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 30)
+                piecetocheck = "FERVOR_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 20)
+                piecetocheck = "TERROR_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else if (i > 10)
+                piecetocheck = "AURORA_" + minecraftarmourpeicetocheckapi.toUpperCase();
+            else
+                piecetocheck =
+                    "CRIMSON_" + minecraftarmourpeicetocheckapi.toUpperCase();
         }
 
-        const urlToGetUuids = `https://sky.coflnet.com/api/auctions/tag/${piecetocheck}/active/overview?orderBy=LOWEST_PRICE&page=${i}`;
-        
+        const urlToGetUuids = `https://sky.coflnet.com/api/auctions/tag/<span class="math-inline">\{piecetocheck\}/active/overview?orderBy\=LOWEST\_PRICE&page\=</span>{i}`;
+
         let response = await fetch(urlToGetUuids, { headers });
-        
+
         if (response.status === 429) {
             if (ratelimit >= 3) {
                 ratelimit = 0;
                 console.log(`Rate limited 3 times. Retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => setTimeout(resolve, 10000));
                 continue;
             } else {
                 ratelimit += 1;
                 console.log("Rate limit hit. Waiting 0.5 seconds...");
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise((resolve) => setTimeout(resolve, 500));
                 continue;
             }
         }
@@ -274,7 +328,7 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
         }
 
         if (Array.isArray(responseJson)) {
-            uuids = responseJson.map(item => item.uuid).filter(uuid => uuid);
+            uuids = responseJson.map((item) => item.uuid).filter((uuid) => uuid);
 
             for (let uuid of uuids) {
                 const urlToGetAttrs = `https://sky.coflnet.com/api/auction/${uuid}`;
@@ -286,11 +340,11 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
                         if (ratelimit >= 3) {
                             ratelimit = 0;
                             console.log(`Rate limited 3 times. Retrying...`);
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            await new Promise((resolve) => setTimeout(resolve, 1000));
                             continue;
                         } else {
                             ratelimit += 1;
-                            await new Promise(resolve => setTimeout(resolve, 300));
+                            await new Promise((resolve) => setTimeout(resolve, 300));
                             continue;
                         }
                     }
@@ -305,7 +359,10 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
                     }
 
                     if (myattribute2) {
-                        if (attributes[myattribute1] === lvl1 && attributes[myattribute2] === lvl2) {
+                        if (
+                            attributes[myattribute1] === lvl1 &&
+                            attributes[myattribute2] === lvl2
+                        ) {
                             return uuid;
                         }
                     } else {
@@ -313,7 +370,6 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
                             return uuid;
                         }
                     }
-
                 } catch (error) {
                     console.log(`Request failed for ${urlToGetAttrs}: ${error}`);
                     continue;
@@ -328,10 +384,10 @@ async function retrieveAuctionsAndCheckAttrs(myattribute1, lvl1, myattribute2, l
     return null;
 }
 
-app.get('/validurl', (req, res) => {
+app.get("/validurl", (req, res) => {
     // Check if the URL query parameter is present
     if (!req.query.url) {
-        return res.status(400).json({ 'Error': 'URL parameter is missing' });
+        return res.status(400).json({ Error: "URL parameter is missing" });
     }
 
     try {
@@ -342,77 +398,129 @@ app.get('/validurl', (req, res) => {
         const options = {
             hostname: parsedUrl.hostname,
             port: parsedUrl.port || 443,
-            path: parsedUrl.pathname + (parsedUrl.search || ''), // Include search params if present
-            method: 'GET',
-            rejectUnauthorized: false // Disable SSL certificate validation
+            path: parsedUrl.pathname + (parsedUrl.search || ""), // Include search params if present
+            method: "GET",
+            rejectUnauthorized: false, // Disable SSL certificate validation
         };
 
         // Make the https request
-        https.get(options, (response) => {
-            const { statusCode } = response;
+        https
+            .get(options, (response) => {
+                const { statusCode } = response;
 
-            if (statusCode >= 200 && statusCode < 300) {
-                res.status(200).json({ 'Validurl': true });
-            } else {
-                res.status(250).json({ 'Validurl': false });
-            }
-        }).on('error', (err) => {
-            console.log('Error:', err.message);
-            res.status(250).json({ 'Error': err.message });
-        });
-
+                if (statusCode >= 200 && statusCode < 300) {
+                    res.status(200).json({ Validurl: true });
+                } else {
+                    res.status(250).json({ Validurl: false });
+                }
+            })
+            .on("error", (err) => {
+                console.log("Error:", err.message);
+                res.status(250).json({ Error: err.message });
+            });
     } catch (err) {
         // Handle any errors that occurred during URL parsing or request
-        console.error('Error parsing URL:', err.message);
-        res.status(250).json({ 'Error': 'Invalid URL format' });
+        console.error("Error parsing URL:", err.message);
+        res.status(250).json({ Error: "Invalid URL format" });
     }
 });
 
-app.get('/checkshorturls', (req, res) => {
-    // check token
-    // get all short urls of the user with that token
-});
-app.post('/addshorturl', (req, res) => {
-    // check auth key
-    // make a unique short url code
-    // add the short url with, oldurl, shorturl, token
+app.post("/addshorturl", (req, res) => {
     const userData = req.body;
+    // check auth key
     const token = req.headers.token;
 
     connection.query(
-        'SELECT * FROM Users WHERE token = ?',
+        "SELECT * FROM Users WHERE token = ?",
         [token],
         (err, results) => {
-            if (err) {
-                console.error('Database query error:', err.stack);
-                return res.status(500).json({ error: 'Database error' });
-            }
             if (results.length === 0) {
-                return res.status(401).json({ error: 'Invalid token or session expired.' });
+                return res
+                    .status(401)
+                    .json({ error: "Invalid token or session expired." });
+            } else if (err) {
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
             }
             const userid = results[0].ID;
             const redirecturl = userData.redirecturl;
-            const newshorturl = userid + crypto.randomBytes(2).toString('hex');
+            // make a unique short url code
+            const newshorturl = userid + crypto.randomBytes(2).toString("hex");
 
-    connection.query(      
-        `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
-        [redirecturl, newshorturl, token]
-        );
+            // add the short url with, oldurl, shorturl, token
+            connection.query(
+                `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
+                [redirecturl, newshorturl, token]
+            );
 
-    res.status(200).json({ message: newshorturl });
+            res.status(200).json({ message: newshorturl });
         }
     );
 });
 
-app.post('/removeshorturl', (req, res) => {
+app.post("/removeshorturl", (req, res) => {
     // check token
+    const token = req.headers.token;
     // check the short url because they will be unique
-    // remove the short url
+    const shorturlremove = req.body.shorturl;
+    if (!shorturlremove) {
+        return res.status(400).json({ error: "Short URL is required." });
+    }
+
+    // Check all the tokens urls
+    connection.query(
+        `SELECT * FROM shorturls WHERE token = ? AND shorturl = ?`,
+        [token, shorturlremove],
+        (err, results) => {
+            if (err) {
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
+            } else if (results.length === 0) {
+                return res.status(404).json({
+                    error: "You dont have any short urls or it doesnt belong to you.",
+                });
+            } else {
+                connection.query(
+                    `DELETE FROM shorturls WHERE shorturl = ?`,
+                    [shorturlremove],
+                    (err, results) => {
+                        if (err) {
+                            console.error("Database query error:", err.stack);
+                            return res.status(500).json({ error: "Database error" });
+                        } else {
+                            res.status(200).json({ message: "Short URL removed." });
+                        }
+                    }
+                );
+            }
+        }
+    );
+});
+
+app.get("/getshorturls", (req, res) => {
+    // check token
+    const token = req.headers.token;
+    if (!token) {
+        return res.status(400).json({ error: "Token is required." });
+    }
+    // get all short urls of the user with that token
+    connection.query(
+        `SELECT * FROM shorturls WHERE token = ?`,
+        [token],
+        (err, results) => {
+            if (err) {
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
+            } else {
+                res.status(200).json({ message: results });
+            }
+        }
+    );
 });
 
 // Fallback route for non-existing routes
-app.use('*', (req, res) => {
-  res.status(404).send('Route not found.');
+app.use("*", (req, res) => {
+    res.status(404).send("Route not found.");
 });
 
 app.listen(port, ip, () => {
