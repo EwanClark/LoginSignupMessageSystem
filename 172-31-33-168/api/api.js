@@ -395,7 +395,7 @@ app.get('/validurl', async (req, res) => {
     try {
         // Check if the URL exists
         const response = await axios.get(url);
-        if (response.ok) {
+        if (response.status === 200) {
             return res.status(200).json({ message: 'URL exists' });
         }
     } catch (error) {
