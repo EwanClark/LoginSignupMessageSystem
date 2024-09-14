@@ -8,7 +8,8 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import https from "https";
 import { URL } from "url";
-import { connect } from "http2";
+import axios from 'axios';
+import { Console } from "console";
 
 const app = express();
 dotenv.config();
@@ -384,44 +385,26 @@ async function retrieveAuctionsAndCheckAttrs(
     return null;
 }
 
-app.get("/validurl", (req, res) => {
+app.get('/validurl', async (req, res) => {
     // Check if the URL query parameter is present
     if (!req.query.url) {
         return res.status(400).json({ Error: "URL parameter is missing" });
     }
 
+    const url = decodeURIComponent(req.query.url); // Decode the URL parameter
     try {
-        // Parse the URL
-        const parsedUrl = new URL(req.query.url);
-
-        // Set options for the https.get request
-        const options = {
-            hostname: parsedUrl.hostname,
-            port: parsedUrl.port || 443,
-            path: parsedUrl.pathname + (parsedUrl.search || ""), // Include search params if present
-            method: "GET",
-            rejectUnauthorized: false, // Disable SSL certificate validation
-        };
-
-        // Make the https request
-        https
-            .get(options, (response) => {
-                const { statusCode } = response;
-
-                if (statusCode >= 200 && statusCode < 300) {
-                    res.status(200).json({ Validurl: true });
-                } else {
-                    res.status(250).json({ Validurl: false });
-                }
-            })
-            .on("error", (err) => {
-                console.log("Error:", err.message);
-                res.status(250).json({ Error: err.message });
-            });
-    } catch (err) {
-        // Handle any errors that occurred during URL parsing or request
-        console.error("Error parsing URL:", err.message);
-        res.status(250).json({ Error: "Invalid URL format" });
+        // Check if the URL exists
+        const response = await axios.get(url);
+        if (response.ok) {
+            return res.status(200).json({ message: 'URL exists' });
+        }
+    } catch (error) {
+        if (error.message.includes("ENOTFOUND")) {
+            return res.status(404).json({ message: error.message});
+        }
+        else {
+            return res.status(200).json({ message: 'URL exists' + error.message });
+        }
     }
 });
 
@@ -505,7 +488,7 @@ app.get("/getshorturls", (req, res) => {
     }
     // get all short urls of the user with that token
     connection.query(
-        `SELECT * FROM shorturls WHERE token = ?`,
+        `SELECT id, redirecturl, shorturl FROM shorturls WHERE token = ?`,
         [token],
         (err, results) => {
             if (err) {
