@@ -7,7 +7,15 @@ function extractShortUrlCode(text) {
     return shortUrlPart;
 }
 // Function to add a short URL
-async function addShortUrl(redirectUrl, token) {
+// Function to add a short URL
+async function addShortUrl(redirectUrl, token, customshorturl) {
+    let body;
+    if (customshorturl) {
+        body = { redirecturl: redirectUrl, customshorturlcode: customshorturl };
+    } else {
+        body = { redirecturl: redirectUrl };
+    }
+
     try {
         const response = await fetch('https://api.bubllz.com/addshorturl', {
             method: 'POST',
@@ -15,14 +23,39 @@ async function addShortUrl(redirectUrl, token) {
                 'Content-Type': 'application/json',
                 'token': token
             },
-            body: JSON.stringify({ redirecturl: redirectUrl })
+            body: JSON.stringify(body)
         });
 
         const data = await response.json();
-        return data.message; // Return the short URL code
+
+        // Handle specific status codes and errors
+        if (response.status === 400) {
+            if (data.error === "Token is required.") {
+                return alert("Token is missing. Please log in.");
+            } else if (data.error === "Redirect URL is required.") {
+                document.getElementById('shortenButton').disabled = false;
+                return alert("Redirect URL is required.");
+            } else if (data.error === "Short URL contains profanity.") {
+                document.getElementById('shortenButton').disabled = false;
+                return alert("Custom short URL contains inappropriate content.");
+            } else if (data.error === "Short URL already exists.") {
+                document.getElementById('shortenButton').disabled = false;
+                return alert("Custom short URL already exists. Please choose a different one.");
+            }
+        } else if (response.status === 401) {
+            document.getElementById('shortenButton').disabled = false;
+            return alert("Invalid token or session expired. Please log in again.");
+        } else if (response.status === 500) {
+            document.getElementById('shortenButton').disabled = false;
+            return alert("An error occurred on the server. Please try again later.");
+        } else if (response.status === 200) {
+            return data.message; // Return the short URL code
+        }
     } catch (error) {
         console.error('An error occurred:', error);
-        alert('An error occurred while shortening the URL');
+        alert('An error occurred while shortening the URL.');
+    } finally {
+        document.getElementById('shortenButton').disabled = false;
     }
 }
 // function to remove shorturl
@@ -40,12 +73,13 @@ async function removeshorturl(shorturlcode, token, urlItem) {
                 console.log('Short URL deleted');
             } else {
                 alert('An error occurred while deleting the short URL');
+                document.getElementById('shortenButton').disabled = false;
                 return console.log('An error occurred');
             }
         })
         .catch(error => {
-            alert('An error occurred while deleting the short URL');
-            console.log('An error occurred:', error);
+            document.getElementById('shortenButton').disabled = false;
+            return alert('An error occurred while deleting the short URL');
         })
         .finally(() => {
             console.log('Short URL deleted from database');
@@ -75,6 +109,7 @@ async function validateAndCheckUrl(url) {
 
         if (response.status === 400) {
             console.log("No url provided");
+            document.getElementById('shortenButton').disabled = false;
             alert("No url provided");
             return false;
         }
@@ -166,10 +201,9 @@ fetch('https://api.bubllz.com/getshorturls', {
             console.log('Shorten button clicked');
             const url = document.getElementById('url').value;
             const validUrl = await validateAndCheckUrl(url);
-
             if (validUrl) {
                 // Make the short URL
-                const shorturlcode = await addShortUrl(validUrl, localStorage.getItem('token'));
+                const shorturlcode = await addShortUrl(validUrl, localStorage.getItem('token'), document.getElementById('shorturlcode').value);
 
                 const parentDiv = document.querySelector('.url-list');
                 const newDiv = document.createElement('div');
@@ -201,10 +235,11 @@ fetch('https://api.bubllz.com/getshorturls', {
                     removeshorturl(shorturlcode, localStorage.getItem('token'), urlItem);
                 });
             } else {
-                alert('URL is invalid');
+                document.getElementById('shortenButton').disabled = false;
+                return alert('URL is invalid');
             }
             alert('Short URL created successfully');
-            document.getElementById('shortenButton').disabled = false;
+            document.getElementById('shortenButton').disaled = false;
         });
     })
     .catch(error => {

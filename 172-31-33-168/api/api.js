@@ -92,6 +92,16 @@ function handleDisconnect() {
     });
 }
 
+function checkforprofanity(shorturl) {
+    const profanity = ["badword1", "badword2", "badword3"];
+    if (shorturl.includes(profanity)) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 // Handle the command input
 rl.on('line', (input) => {
     const args = input.trim().split(/\s+/);  // Trim input and split by any whitespace
@@ -459,90 +469,70 @@ app.get('/validurl', async (req, res) => {
 
 app.post("/addshorturl", (req, res) => {
     const userData = req.body;
-    // check auth key
-    if (!req.headers.token) {
+    const token = req.headers.token;
+
+    if (!token) {
         return res.status(400).json({ error: "Token is required." });
     }
-    const token = req.headers.token;
     if (!userData.redirecturl) {
         return res.status(400).json({ error: "Redirect URL is required." });
     }
     const redirecturl = userData.redirecturl;
 
-    connection.query(
-        "SELECT * FROM Users WHERE token = ?",
-        [token],
-        (err, results) => {
-            if (results.length === 0) {
-                return res.status(401).json({ error: "Invalid token or session expired." });
-            } else if (err) {
-                console.error("Database query error:", err.stack);
-                return res.status(500).json({ error: "Database error" });
-            } else {
-                if (userData.customshorturlcode) {
-                    if (shorturlfilter) {
-                        // do check the short url for profanity
-                        if (checkforprofanity(userData.customshorturlcode)) {
-                            return res.status(400).json({ error: "Short URL contains profanity." });
-                        } else {
-                            // check if it exists in database
-                            connection.query(
-                                `SELECT * FROM shorturls WHERE shorturl = ?`,
-                                [userData.customshorturlcode],
-                                (err, results) => {
-                                    if (err) {
-                                        console.error("Database query error:", err.stack);
-                                        return res.status(500).json({ error: "Database error" });
-                                    } else if (results.length > 0) {
-                                        return res.status(400).json({ error: "Short URL already exists." });
-                                    } else {
-                                        // add the short url with, oldurl, shorturl, token
-                                        connection.query(
-                                            `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
-                                            [redirecturl, userData.customshorturlcode, token]
-                                        );
+    connection.query("SELECT * FROM Users WHERE token = ?", [token], (err, results) => {
+        if (err) {
+            console.error("Database query error:", err.stack);
+            return res.status(500).json({ error: "Database error" });
+        }
+        if (results.length === 0) {
+            return res.status(401).json({ error: "Invalid token or session expired." });
+        }
 
-                                        res.status(200).json({ message: userData.customshorturlcode });
-                                    }
-                                }
-                            );
+        if (userData.customshorturlcode) {
+            const customshorturl = userData.customshorturlcode;
+            if (shorturlfilter && checkforprofanity(customshorturl)) {
+                return res.status(400).json({ error: "Short URL contains profanity." });
+            }
+
+            connection.query(`SELECT * FROM shorturls WHERE shorturl = ?`, [customshorturl], (err, results) => {
+                if (err) {
+                    console.error("Database query error:", err.stack);
+                    return res.status(500).json({ error: "Database error" });
+                }
+                if (results.length > 0) {
+                    return res.status(400).json({ error: "Short URL already exists." });
+                }
+
+                connection.query(
+                    `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
+                    [redirecturl, customshorturl, token],
+                    (err) => {
+                        if (err) {
+                            console.error("Database insertion error:", err.stack);
+                            return res.status(500).json({ error: "Database error" });
                         }
-                    } else {
-                        connection.query(
-                            `SELECT * FROM shorturls WHERE shorturl = ?`,
-                            [userData.customshorturlcode],
-                            (err, results) => {
-                                if (err) {
-                                    console.error("Database query error:", err.stack);
-                                    return res.status(500).json({ error: "Database error" });
-                                } else if (results.length > 0) {
-                                    return res.status(400).json({ error: "Short URL already exists." });
-                                } else {
-                                    // add the short url with, oldurl, shorturl, token
-                                    connection.query(
-                                        `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
-                                        [redirecturl, userData.customshorturlcode, token]
-                                    );
-
-                                    res.status(200).json({ message: userData.customshorturlcode });
-                                }
-                            }
-                        );
+                        res.status(200).json({ message: customshorturl });
                     }
-                } else {
-                    const userid = results[0].ID;
-                    const newshorturl = userid + crypto.randomBytes(2).toString("hex");
-                    // add the short url with, oldurl, shorturl, token
-                    connection.query(
-                        `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
-                        [redirecturl, newshorturl, token]
-                    );
+                );
+            });
+        } else {
+            const userid = results[0].ID;
+            const newshorturl = userid + crypto.randomBytes(2).toString("hex");
+            connection.query(
+                `INSERT INTO shorturls (redirecturl, shorturl, token) VALUES (?, ?, ?)`,
+                [redirecturl, newshorturl, token],
+                (err) => {
+                    if (err) {
+                        console.error("Database insertion error:", err.stack);
+                        return res.status(500).json({ error: "Database error" });
+                    }
                     res.status(200).json({ message: newshorturl });
                 }
-            }
+            );
         }
-    );
+    });
 });
+
 app.post("/removeshorturl", (req, res) => {
     // check token
     const token = req.headers.token;
