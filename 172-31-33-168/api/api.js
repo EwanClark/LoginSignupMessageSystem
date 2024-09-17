@@ -36,6 +36,7 @@ app.use(express.json());
 app.use(limiter);
 let messages = [];
 let clients = [];
+let hatewords = [];
 let shorturlfilter = true;
 const excludedRoutes = [
     "/login",
@@ -52,9 +53,6 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-
-// Database connection
-let connection;
 if (!fs.existsSync('./settings.txt')) {
     fs.writeFileSync('./settings.txt', '');
     console.log('settings.txt created');
@@ -92,42 +90,85 @@ function handleDisconnect() {
     });
 }
 
-function checkforprofanity(shorturl) {
-    const profanity = ["badword1", "badword2", "badword3"];
-    if (shorturl.includes(profanity)) {
-        return true;
-    }
-    else {
-        return false;
+function getHateWordsFromFile(filePath) {
+    try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        return fileContent.split('\n').map(word => word.trim()).filter(Boolean); // Removes empty lines
+    } catch (error) {
+        console.error('Error reading file:', error);
+        return [];
     }
 }
 
+function isHateSpeech(text) {
+    const lowerCaseText = text.toLowerCase();
+    return hateWords.some(hateWord => lowerCaseText.includes(hateWord.toLowerCase()));
+
+}
 // Handle the command input
 rl.on('line', (input) => {
-    const args = input.trim().split(/\s+/);  // Trim input and split by any whitespace
-    const command = args[0].toLowerCase();   // First part is the command
-    const value = args[1]?.toLowerCase();    // Second part is the value, if any
+    const args = input.trim().split(/\s+/);
+    const command = args[0].toLowerCase();
+    const value = args[1]?.toLowerCase();
 
     switch (command) {
         case 'shorturlfilter':
             if (value === 'true') {
                 shorturlfilter = true;
+                fs.writeFileSync('./settings.txt', `shorturlfilter=${shorturlfilter}`);
                 console.log('Custom short url filter set to: true.');
-            } else if (value === 'false') {
+            }
+            else if (value === 'false') {
                 shorturlfilter = false;
+                fs.writeFileSync('./settings.txt', `shorturlfilter=${shorturlfilter}`);
                 console.log('Custom short url filter set to: false.');
             }
             else if (value === 'status') {
                 console.log(`Short URL filter is currently set to: ${shorturlfilter}`);
                 break;
             }
+            else if (value === 'reload') {
+                if (fs.existsSync('./settings.txt')) {
+                    console.log('Reloading settings from settings.txt file.');
+                    const data = fs.readFileSync('./settings.txt', 'utf8');
+                    const lines = data.split('\n');
+                    lines.forEach((line) => {
+                        const [key, value] = line.split('=');
+                        if (key === 'shorturlfilter') {
+                            shorturlfilter = value === 'true';
+                            console.log(`Short URL filter set to: ${shorturlfilter} from your settings.txt file.`);
+                        }
+                    });
+                }
+                else {
+                    console.log('settings.txt file not found.');
+                    fs.writeFileSync('./settings.txt', '');
+                    console.log('Created settings.txt file.');
+                    console.log("The shorturlfilter is set to true by default.");
+                    fs.writeFileSync('./settings.txt', 'shoturlfilter=true');
+                    shorturlfilter = true;
+                }
+                if (fs.existsSync('./filter.txt')) {
+                    const filePath = path.join(__dirname, 'filter.txt');
+                    const hateWords = getHateWordsFromFile(filePath);
+                    console.log('Hate words loaded from filter.txt file.');
+                }
+                else {
+                    console.log('filter.txt file not found.');
+                    fs.writeFileSync('./filter.txt', 'exampleword1\nexampleword2\nexampleword3\n');
+                    console.log('Created filter.txt file.');
+                    console.log("Please add words to the filter.txt file to check for hate speech.");
+                    console.log("Then run 'shorturlfilter reload' to reload the filter.");
+                }
+                break;
+            }
             else {
-                console.log('Please enter either "true" or "false" or "status" with the shorturlfilter command.');
+                console.log('Invalid arguments. type "help" for more information.');
             }
             break;
         case 'help':
             console.log('Commands:');
-            console.log('shorturlfilter <true/false> - Set short url filter to true or false.');
+            console.log('shorturlfilter <true/false/status/reload> - Set short url filter to true or false.');
             console.log('exit - Exit the application.');
             break;
         case 'exit':
@@ -490,7 +531,7 @@ app.post("/addshorturl", (req, res) => {
 
         if (userData.customshorturlcode) {
             const customshorturl = userData.customshorturlcode;
-            if (shorturlfilter && checkforprofanity(customshorturl)) {
+            if (shorturlfilter && isHateSpeech(customshorturl)) {
                 return res.status(400).json({ error: "Short URL contains profanity." });
             }
 
@@ -610,6 +651,26 @@ app.listen(port, ip, () => {
                 console.log(`Short URL filter set to: ${shorturlfilter} from your settings.txt file.`);
             }
         });
+    }
+    else {
+        console.log('settings.txt file not found.');
+        fs.writeFileSync('./settings.txt', '');
+        console.log('Created settings.txt file.');
+        console.log("The shorturlfilter is set to true by default.");
+        fs.writeFileSync('./settings.txt', 'shorturlfilter=true');
+        shorturlfilter = true
+    }
+    if (fs.existsSync('./filter.txt')) {
+        const filePath = path.join(__dirname, 'filter.txt');
+        const hateWords = getHateWordsFromFile(filePath);
+        console.log('Hate words loaded from filter.txt file.');
+    }
+    else {
+        console.log('filter.txt file not found.');
+        fs.writeFileSync('./filter.txt', 'exampleword1\nexampleword2\nexampleword3\n');
+        console.log('Created filter.txt file.');
+        console.log("Please add words to the filter.txt file to check for hate speech.");
+        console.log("Then run shorturlfilter reload to reload the filter.");
     }
     console.log(`API listening at port: ${port} on: ${ip}`);
     console.log("Type 'help' for a list of commands.");
