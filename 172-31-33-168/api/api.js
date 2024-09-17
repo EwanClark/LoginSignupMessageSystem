@@ -37,6 +37,7 @@ app.use(limiter);
 let messages = [];
 let clients = [];
 let hatewords = [];
+let connection;
 let shorturlfilter = true;
 const excludedRoutes = [
     "/login",
@@ -100,7 +101,7 @@ function getHateWordsFromFile(filePath) {
     }
 }
 
-function isHateSpeech(text) {
+function isHateSpeech(text, hateWords) {
     const lowerCaseText = text.toLowerCase();
     return hateWords.some(hateWord => lowerCaseText.includes(hateWord.toLowerCase()));
 
@@ -149,8 +150,7 @@ rl.on('line', (input) => {
                     shorturlfilter = true;
                 }
                 if (fs.existsSync('./filter.txt')) {
-                    const filePath = path.join(__dirname, 'filter.txt');
-                    const hateWords = getHateWordsFromFile(filePath);
+                    const hateWords = getHateWordsFromFile('./filter.txt');
                     console.log('Hate words loaded from filter.txt file.');
                 }
                 else {
@@ -516,7 +516,7 @@ app.post("/addshorturl", (req, res) => {
         return res.status(400).json({ error: "Token is required." });
     }
     if (!userData.redirecturl) {
-        return res.status(400).json({ error: "Redirect URL is required." });
+        return res.status(402).json({ error: "Redirect URL is required." });
     }
     const redirecturl = userData.redirecturl;
 
@@ -531,8 +531,8 @@ app.post("/addshorturl", (req, res) => {
 
         if (userData.customshorturlcode) {
             const customshorturl = userData.customshorturlcode;
-            if (shorturlfilter && isHateSpeech(customshorturl)) {
-                return res.status(400).json({ error: "Short URL contains profanity." });
+            if (shorturlfilter && isHateSpeech(customshorturl, hatewords)) {
+                return res.status(403).json({ error: "Short URL contains profanity." });
             }
 
             connection.query(`SELECT * FROM shorturls WHERE shorturl = ?`, [customshorturl], (err, results) => {
@@ -541,7 +541,7 @@ app.post("/addshorturl", (req, res) => {
                     return res.status(500).json({ error: "Database error" });
                 }
                 if (results.length > 0) {
-                    return res.status(400).json({ error: "Short URL already exists." });
+                    return res.status(404).json({ error: "Short URL already exists." });
                 }
 
                 connection.query(
@@ -660,9 +660,8 @@ app.listen(port, ip, () => {
         fs.writeFileSync('./settings.txt', 'shorturlfilter=true');
         shorturlfilter = true
     }
-    if (fs.existsSync('./filter.txt')) {
-        const filePath = path.join(__dirname, 'filter.txt');
-        const hateWords = getHateWordsFromFile(filePath);
+    if (fs.existsSync('./filter.txt')) {;
+        let hateWords = getHateWordsFromFile('./filter.txt');
         console.log('Hate words loaded from filter.txt file.');
     }
     else {

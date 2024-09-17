@@ -30,21 +30,21 @@ async function addShortUrl(redirectUrl, token, customshorturl) {
 
         // Handle specific status codes and errors
         if (response.status === 400) {
-            if (data.error === "Token is required.") {
-                return alert("Token is missing. Please log in.");
-            } else if (data.error === "Redirect URL is required.") {
-                document.getElementById('shortenButton').disabled = false;
-                return alert("Redirect URL is required.");
-            } else if (data.error === "Short URL contains profanity.") {
-                document.getElementById('shortenButton').disabled = false;
-                return alert("Custom short URL contains inappropriate content.");
-            } else if (data.error === "Short URL already exists.") {
-                document.getElementById('shortenButton').disabled = false;
-                return alert("Custom short URL already exists. Please choose a different one.");
-            }
+            document.getElementById('shortenButton').disabled = false;
+            alert("No token provided. Please log in again.");
+            window.location.href = 'https://bubllz.com/login';
         } else if (response.status === 401) {
             document.getElementById('shortenButton').disabled = false;
             return alert("Invalid token or session expired. Please log in again.");
+        } else if (response.status === 402) {
+            document.getElementById('shortenButton').disabled = false;
+            return alert("No URL provided. Please enter a URL to shorten.");
+        } else if (response.status === 403) {
+            document.getElementById('shortenButton').disabled = false;
+            return alert("Custom short URL contains profanity.");
+        } else if (response.status === 404) {
+            document.getElementById('shortenButton').disabled = false;
+            return alert("Custom short URL already exists. Please choose another one.");
         } else if (response.status === 500) {
             document.getElementById('shortenButton').disabled = false;
             return alert("An error occurred on the server. Please try again later.");
