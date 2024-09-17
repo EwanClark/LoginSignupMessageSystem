@@ -29,7 +29,7 @@ else {
         console.log('Success, token stored!');
         localStorage.setItem('token', data.message);
         alert(`User logged in successfully! as ${usernameInputted}`);
-        window.location.href = 'https://bubllz.com/message/';
+        window.location.href = 'https://bubllz.com';
     })
     .catch(error => {
         console.error('There was a problem with the fetch operation:', error);
