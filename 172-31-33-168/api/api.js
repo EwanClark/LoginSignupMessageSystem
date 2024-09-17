@@ -534,6 +534,9 @@ app.post("/addshorturl", (req, res) => {
             if (shorturlfilter && isHateSpeech(customshorturl, hatewords)) {
                 return res.status(403).json({ error: "Short URL contains profanity." });
             }
+            else if (!/^[a-zA-Z0-9]+$/.test(customshorturl)) {
+                return res.status(405).json({ error: "Short URL contains invalid characters." });
+            }
 
             connection.query(`SELECT * FROM shorturls WHERE shorturl = ?`, [customshorturl], (err, results) => {
                 if (err) {
