@@ -45,6 +45,12 @@ async function addShortUrl(redirectUrl, token, customshorturl) {
         } else if (response.status === 404) {
             document.getElementById('shortenButton').disabled = false;
             return alert("Custom short URL already exists. Please choose another one.");
+        } else if (response.status === 405) {
+            document.getElementById('shortenButton').disabled = false;
+            alert("Custom short URL contains invalid characters. Only letters and numbers are allowed.");
+        } else if (response.status === 406) {
+            document.getElementById('shortenButton').disabled = false;
+            alert("Custom short URL is invalid and one of the current api routes. Please choose another one.");
         } else if (response.status === 500) {
             document.getElementById('shortenButton').disabled = false;
             alert("An error occurred on the server. Please try again later.");

@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import axios from 'axios';
 import readline from 'readline';
 import fs from 'fs';
+import e from "express";
 
 const app = express();
 dotenv.config();
@@ -536,6 +537,9 @@ app.post("/addshorturl", (req, res) => {
             }
             else if (!/^[a-zA-Z0-9]+$/.test(customshorturl)) {
                 return res.status(405).json({ error: "Short URL contains invalid characters." });
+            }
+            else if (excludedRoutes.includes(`/${customshorturl.toLowerCase()}`)) {
+                return res.status(406).json({ error: "Short URL is invalid and is one of the api routes." });
             }
 
             connection.query(`SELECT * FROM shorturls WHERE shorturl = ?`, [customshorturl], (err, results) => {
