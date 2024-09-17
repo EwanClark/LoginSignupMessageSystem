@@ -47,7 +47,7 @@ async function addShortUrl(redirectUrl, token, customshorturl) {
             return alert("Custom short URL already exists. Please choose another one.");
         } else if (response.status === 500) {
             document.getElementById('shortenButton').disabled = false;
-            return alert("An error occurred on the server. Please try again later.");
+            alert("An error occurred on the server. Please try again later.");
         } else if (response.status === 200) {
             return data.message; // Return the short URL code
         }
@@ -204,6 +204,10 @@ fetch('https://api.bubllz.com/getshorturls', {
             if (validUrl) {
                 // Make the short URL
                 const shorturlcode = await addShortUrl(validUrl, localStorage.getItem('token'), document.getElementById('shorturlcode').value);
+                if (!shorturlcode) {
+                    document.getElementById('shortenButton').disabled = false;
+                    return
+                }
 
                 const parentDiv = document.querySelector('.url-list');
                 const newDiv = document.createElement('div');
