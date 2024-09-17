@@ -223,6 +223,7 @@ fetch('https://api.bubllz.com/getshorturls', {
                 newDiv.appendChild(deleteButton);
                 parentDiv.appendChild(newDiv);
                 document.getElementById('url').value = '';
+                document.getElementById('shorturlcode').value = '';
 
                 // Add event listener for the newly added delete button
                 deleteButton.addEventListener('click', function () {
