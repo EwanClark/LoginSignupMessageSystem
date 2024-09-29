@@ -9,7 +9,6 @@ import dotenv from "dotenv";
 import axios from 'axios';
 import readline from 'readline';
 import fs from 'fs';
-import e from "express";
 
 const app = express();
 dotenv.config();
