@@ -85,8 +85,6 @@ function handleDisconnect() {
             handleDisconnect(); // Reconnect on connection loss or reset
         } else {
             console.error("Unhandled error:", err);
-            // Optionally, decide whether to throw the error or not
-            // For now, we'll log it and keep the application running
         }
     });
 }
@@ -639,6 +637,8 @@ app.get("/getshorturls", (req, res) => {
         }
     );
 });
+
+
 
 // Fallback route for non-existing routes
 app.use("*", (req, res) => {
