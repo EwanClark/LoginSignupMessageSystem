@@ -23,6 +23,8 @@ const limiter = rateLimit({
 });
 
 app.set("trust proxy", 1);
+app.set("view engine", "ejs");
+app.set("webpages", "./webpages");
 app.use(
     cors({
         origin: "https://bubllz.com",
@@ -48,7 +50,6 @@ const excludedRoutes = [
     "/getshorturls",
     "/addshorturl",
     "/removeshorturl",
-    "/getattrs",
 ];
 const rl = readline.createInterface({
     input: process.stdin,
