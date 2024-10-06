@@ -12,6 +12,7 @@ if (localStorage.getItem('dark-mode') === 'enabled') {
 }
 
 addEventListener("DOMContentLoaded", function () {
+    document.getElementById("title").innerHTML = `URL Analytics for ${window.location.search.split("shorturl=")[1]}`;
     fetch("https://api.bubllz.com/shorturlanalytics", {
         method: "GET",
         headers: {
