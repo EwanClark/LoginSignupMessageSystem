@@ -226,7 +226,7 @@ app.get("/:shorturl", (req, res, next) => {
     }
 });
 
-app.get("/analytics", (req, res) => {
+app.get("/shorturlanalytics", (req, res) => {
     const { shorturl } = req.body.shorturl;
     connection.query(
         `SELECT * FROM shorturlanalytics WHERE shorturl = ?`,
@@ -239,11 +239,9 @@ app.get("/analytics", (req, res) => {
             if (results.length === 0) {
                 return res.status(404).json({ error: "Short URL not found" });
             }
-            res.status(200).json({ message: results });
+            return res.status(200).json({ message: results });
         }
     )
-    //get analytics for the short url
-    res.status(200).json({ message: "Analytics for short url" });
 });
 
 app.post("/signup", async (req, res) => {
