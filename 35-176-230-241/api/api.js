@@ -23,8 +23,6 @@ const limiter = rateLimit({
 });
 
 app.set("trust proxy", 1);
-app.set("view engine", "ejs");
-app.set("webpages", "./webpages");
 app.use(
     cors({
         origin: "https://bubllz.com",
@@ -50,6 +48,7 @@ const excludedRoutes = [
     "/getshorturls",
     "/addshorturl",
     "/removeshorturl",
+    "/shorturlanalytics",
 ];
 const rl = readline.createInterface({
     input: process.stdin,
@@ -180,16 +179,6 @@ rl.on('line', (input) => {
 
 handleDisconnect();
 
-app.get("/:shorturl/analytics", (req, res, next) => {
-    const { shorturl } = req.params;
-    if (excludedRoutes.includes(`/${shorturl.toLowerCase()}`)) {
-        return next(); // Skip this middleware and go to the next handler
-    }
-    else {
-        //get analytics for the short url
-        res.status(200).json({ message: "Analytics for short url" });
-    }
-});
 
 app.get("/:shorturl", (req, res, next) => {
     const { shorturl } = req.params;
@@ -235,6 +224,26 @@ app.get("/:shorturl", (req, res, next) => {
             }
         );
     }
+});
+
+app.get("/analytics", (req, res) => {
+    const { shorturl } = req.body.shorturl;
+    connection.query(
+        `SELECT * FROM shorturlanalytics WHERE shorturl = ?`,
+        [shorturl],
+        (err, results) => {
+            if (err) {
+                console.error("Database query error:", err.stack);
+                return res.status(500).json({ error: "Database error" });
+            }
+            if (results.length === 0) {
+                return res.status(404).json({ error: "Short URL not found" });
+            }
+            res.status(200).json({ message: results });
+        }
+    )
+    //get analytics for the short url
+    res.status(200).json({ message: "Analytics for short url" });
 });
 
 app.post("/signup", async (req, res) => {
