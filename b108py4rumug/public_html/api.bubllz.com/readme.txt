@@ -1,1 +1,0 @@
-this is a folder so people can access the api.js file for how the api works.
