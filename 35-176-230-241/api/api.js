@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import axios from 'axios';
 import readline from 'readline';
 import fs from 'fs';
-import moment from 'moment-timezone'
+import moment from 'moment';
 
 const app = express();
 dotenv.config();
@@ -218,7 +218,7 @@ app.get("/:shorturl", (req, res, next) => {
                             const city = response.data.city;
                             const region = response.data.region;
                             const country = response.data.country;
-                            const currentTime = moment().tz("America/New_York").format('YYYY-MM-DD HH:mm:ss');
+                            const currentTime = moment.utc().format('YYYY-MM-DD HH:mm:ss');
                             connection.query("INSERT INTO shorturlanalytics (shorturl, timestamp, ip, useragent, referrer, isp, city, region, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                 [shorturl, currentTime, clientIp, userAgent, referrer, isp, city, region, country], (err) => {
                                     if (err) {
