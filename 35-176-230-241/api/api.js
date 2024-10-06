@@ -4,11 +4,11 @@ import mysql from "mysql2";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import fetch from "node-fetch";
 import dotenv from "dotenv";
 import axios from 'axios';
 import readline from 'readline';
 import fs from 'fs';
+import moment from 'moment-timezone'
 
 const app = express();
 dotenv.config();
@@ -179,28 +179,61 @@ rl.on('line', (input) => {
 
 handleDisconnect();
 
-app.get("/:anything", (req, res, next) => {
-    const { anything } = req.params;
-
-    // Check if the route is in the excluded list
-    if (excludedRoutes.includes(`/${anything.toLowerCase()}`)) {
+app.get("/:shorturl/analytics", (req, res, next) => {
+    const { shorturl } = req.params;
+    if (excludedRoutes.includes(`/${shorturl.toLowerCase()}`)) {
         return next(); // Skip this middleware and go to the next handler
     }
+    else {
+        //get analytics for the short url
+        res.status(200).json({ message: "Analytics for short url" });
+    }
+});
 
-    connection.query(
-        `SELECT * FROM shorturls WHERE shorturl = ?`,
-        [anything],
-        (err, results) => {
-            if (err) {
-                console.error("Database query error:", err.stack);
-                return res.status(500).json({ error: "Database error" });
+app.get("/:shorturl", (req, res, next) => {
+    const { shorturl } = req.params;
+    // Check if the route is in the excluded list
+    if (excludedRoutes.includes(`/${shorturl.toLowerCase()}`)) {
+        return next(); // Skip this middleware and go to the next handler
+    } else {
+        connection.query(
+            `SELECT * FROM shorturls WHERE shorturl = ?`,
+            [shorturl],
+            (err, results) => {
+                if (err) {
+                    console.error("Database query error:", err.stack);
+                    return res.status(500).json({ error: "Database error" });
+                }
+                if (results.length === 0) {
+                    return res.status(404).json({ error: "Short URL not found" });
+                } else {
+                    // get ip user agent referrer location.
+                    const referrer = results[0].redirecturl;
+                    res.redirect(referrer);
+                    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+                    axios.get(`https://ipinfo.io/${clientIp}?token=${process.env.IPLOCATER_TOKEN}`)
+                        .then((response) => {
+                            const userAgent = req.headers['user-agent'];
+                            const isp = response.data.org;
+                            const city = response.data.city;
+                            const region = response.data.region;
+                            const country = response.data.country;
+                            const currentTime = moment().tz("America/New_York").format('YYYY-MM-DD HH:mm:ss');
+                            connection.query("INSERT INTO shorturlanalytics (shorturl, timestamp, ip, useragent, referrer, isp, city, region, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                [shorturl, currentTime, clientIp, userAgent, referrer, isp, city, region, country], (err) => {
+                                    if (err) {
+                                        console.error("Error inserting into shorturlanalytics:", err.stack);
+                                    }
+                                }
+                            );
+                        })
+                        .catch((error) => {
+                            console.error("Error fetching IP info:", error.stack);
+                        });
+                }
             }
-            if (results.length === 0) {
-                return res.status(404).json({ error: "Short URL not found" });
-            }
-            res.redirect(results[0].redirecturl);
-        }
-    );
+        );
+    }
 });
 
 app.post("/signup", async (req, res) => {
@@ -366,122 +399,6 @@ app.post("/getattrs", async (req, res) => {
             .json({ error: "An error occurred while retrieving the UUID" });
     }
 });
-
-async function retrieveAuctionsAndCheckAttrs(
-    myattribute1,
-    lvl1,
-    myattribute2,
-    lvl2,
-    crimsonislepeicetocheckapi,
-    minecraftarmourpeicetocheckapi
-) {
-    const headers = { "Content-Type": "application/json" };
-    let uuids = [];
-    let ratelimit = 0;
-    let i = 0;
-    let j = crimsonislepeicetocheckapi === "all" ? 50 : 10;
-    let piecetocheck =
-        crimsonislepeicetocheckapi.toUpperCase() +
-        "_" +
-        minecraftarmourpeicetocheckapi.toUpperCase();
-
-    while (i < j) {
-        if (crimsonislepeicetocheckapi === "all") {
-            if (i > 40)
-                piecetocheck = "HOLLOW_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 30)
-                piecetocheck = "FERVOR_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 20)
-                piecetocheck = "TERROR_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else if (i > 10)
-                piecetocheck = "AURORA_" + minecraftarmourpeicetocheckapi.toUpperCase();
-            else
-                piecetocheck =
-                    "CRIMSON_" + minecraftarmourpeicetocheckapi.toUpperCase();
-        }
-
-        const urlToGetUuids = `https://sky.coflnet.com/api/auctions/tag/<span class="math-inline">\{piecetocheck\}/active/overview?orderBy\=LOWEST\_PRICE&page\=</span>{i}`;
-
-        let response = await fetch(urlToGetUuids, { headers });
-
-        if (response.status === 429) {
-            if (ratelimit >= 3) {
-                ratelimit = 0;
-                console.log(`Rate limited 3 times. Retrying...`);
-                await new Promise((resolve) => setTimeout(resolve, 10000));
-                continue;
-            } else {
-                ratelimit += 1;
-                console.log("Rate limit hit. Waiting 0.5 seconds...");
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                continue;
-            }
-        }
-
-        let responseJson;
-        try {
-            responseJson = await response.json();
-        } catch (error) {
-            console.log(`Error decoding JSON from ${urlToGetUuids}: ${error}`);
-            continue;
-        }
-
-        if (Array.isArray(responseJson)) {
-            uuids = responseJson.map((item) => item.uuid).filter((uuid) => uuid);
-
-            for (let uuid of uuids) {
-                const urlToGetAttrs = `https://sky.coflnet.com/api/auction/${uuid}`;
-
-                try {
-                    response = await fetch(urlToGetAttrs, { headers });
-
-                    if (response.status === 429) {
-                        if (ratelimit >= 3) {
-                            ratelimit = 0;
-                            console.log(`Rate limited 3 times. Retrying...`);
-                            await new Promise((resolve) => setTimeout(resolve, 1000));
-                            continue;
-                        } else {
-                            ratelimit += 1;
-                            await new Promise((resolve) => setTimeout(resolve, 300));
-                            continue;
-                        }
-                    }
-
-                    let attributes;
-                    try {
-                        const data = await response.json();
-                        attributes = data.nbtData?.data?.attributes || {};
-                    } catch (error) {
-                        console.log(`Error decoding JSON from ${urlToGetAttrs}: ${error}`);
-                        continue;
-                    }
-
-                    if (myattribute2) {
-                        if (
-                            attributes[myattribute1] === lvl1 &&
-                            attributes[myattribute2] === lvl2
-                        ) {
-                            return uuid;
-                        }
-                    } else {
-                        if (attributes[myattribute1] === lvl1) {
-                            return uuid;
-                        }
-                    }
-                } catch (error) {
-                    console.log(`Request failed for ${urlToGetAttrs}: ${error}`);
-                    continue;
-                }
-            }
-        }
-
-        uuids = [];
-        i += 1;
-    }
-
-    return null;
-}
 
 app.get('/validurl', async (req, res) => {
     // Check if the URL query parameter is present
@@ -666,7 +583,8 @@ app.listen(port, ip, () => {
         fs.writeFileSync('./settings.txt', 'shorturlfilter=true');
         shorturlfilter = true
     }
-    if (fs.existsSync('./filter.txt')) {;
+    if (fs.existsSync('./filter.txt')) {
+        ;
         let hateWords = getHateWordsFromFile('./filter.txt');
         console.log('Hate words loaded from filter.txt file.');
     }

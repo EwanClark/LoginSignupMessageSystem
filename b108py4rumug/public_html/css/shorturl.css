@@ -97,7 +97,9 @@ button:hover {
     max-width: 100%; /* Ensure text doesn't exceed the container width */
     word-wrap: break-word; /* Ensure long words break and wrap */
     text-align: center; /* Center text within its container */
+    font-family: 'Roboto', sans-serif; /* Set font family to match the body text */
 }
+
 
 /* Delete Button Styles */
 .url-item .delete-btn {
@@ -152,6 +154,16 @@ body.dark-mode .url-item {
     background-color: #333; /* Dark background for URL items */
     border: 1px solid #555; /* Darker border for URL items */
     color: #e0e0e0; /* Light text color for URL items */
+}
+
+/* Link Styles */
+a {
+    color: #1e90ff; /* Bright blue for links */
+    text-decoration: none; /* Remove underline */
+}
+
+a:hover {
+    text-decoration: underline; /* Underline on hover */
 }
 
 /* Custom Scrollbar Styles */

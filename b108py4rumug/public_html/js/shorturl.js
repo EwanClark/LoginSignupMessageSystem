@@ -2,11 +2,11 @@ let currentID = 1;
 
 // Function to get the short URL code from the full URL
 function extractShortUrlCode(text) {
-    // Remove the base URL and split at the ' >> ' separator
-    const shortUrlPart = text.replace('https://short.bubllz.com/', '').split(' >> ')[0];
-    return shortUrlPart;
+    // Use regex to match the short URL code
+    const match = text.match(/https:\/\/short\.bubllz\.com\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null; // Return the matched code or null if not found
 }
-// Function to add a short URL
+
 // Function to add a short URL
 async function addShortUrl(redirectUrl, token, customshorturl) {
     let body;
@@ -50,7 +50,7 @@ async function addShortUrl(redirectUrl, token, customshorturl) {
             alert("Custom short URL contains invalid characters. Only letters and numbers are allowed.");
         } else if (response.status === 406) {
             document.getElementById('shortenButton').disabled = false;
-            alert("Custom short URL is invalid and one of the current api routes. Please choose another one.");
+            alert("Custom short URL is invalid and one of the current API routes. Please choose another one.");
         } else if (response.status === 500) {
             document.getElementById('shortenButton').disabled = false;
             alert("An error occurred on the server. Please try again later.");
@@ -64,7 +64,8 @@ async function addShortUrl(redirectUrl, token, customshorturl) {
         document.getElementById('shortenButton').disabled = false;
     }
 }
-// function to remove shorturl
+
+// Function to remove short URL
 async function removeshorturl(shorturlcode, token, urlItem) {
     fetch("https://api.bubllz.com/removeshorturl", {
         method: 'POST',
@@ -114,9 +115,9 @@ async function validateAndCheckUrl(url) {
         });
 
         if (response.status === 400) {
-            console.log("No url provided");
+            console.log("No URL provided");
             document.getElementById('shortenButton').disabled = false;
-            alert("No url provided");
+            alert("No URL provided");
             return false;
         }
         if (response.status === 200) {
@@ -176,8 +177,12 @@ fetch('https://api.bubllz.com/getshorturls', {
 
             const urlText = document.createElement('div');
             urlText.className = 'url-text';
-            urlText.textContent = `https://short.bubllz.com/${url.shorturl} >> ${url.redirecturl}`;
-
+            urlText.innerHTML = `
+                <a href="https://short.bubllz.com/${url.shorturl}">https://short.bubllz.com/${url.shorturl}</a>
+                &nbsp;&nbsp;&gt;&gt;&nbsp;&nbsp;
+                <a href="${url.redirecturl}">${url.redirecturl}</a>
+                <br><a href="https://short.bubllz.com/${url.shorturl}/analytics">View Analytics</a>
+            `;
             const deleteButton = document.createElement('button');
             deleteButton.className = 'delete-btn';
             deleteButton.textContent = 'Delete';
@@ -189,7 +194,12 @@ fetch('https://api.bubllz.com/getshorturls', {
             // Add event listener for the newly added delete button
             deleteButton.addEventListener('click', function () {
                 const urlItem = this.closest('.url-item');
-                const shortUrlCode = extractShortUrlCode(urlItem.querySelector('.url-text').textContent)
+                const shortUrlCode = extractShortUrlCode(urlItem.querySelector('.url-text').innerHTML);
+                if (!shortUrlCode) {
+                    alert('Could not extract the short URL code.');
+                    return;
+                }
+
                 if (!localStorage.getItem('token')) {
                     alert('Please login to create or view your short URLs.');
                     window.location.href = 'https://bubllz.com/login';
@@ -210,49 +220,46 @@ fetch('https://api.bubllz.com/getshorturls', {
             if (validUrl) {
                 // Make the short URL
                 const shorturlcode = await addShortUrl(validUrl, localStorage.getItem('token'), document.getElementById('shorturlcode').value);
-                if (!shorturlcode) {
-                    document.getElementById('shortenButton').disabled = false;
-                    return
-                }
-
                 const parentDiv = document.querySelector('.url-list');
-                const newDiv = document.createElement('div');
-                newDiv.className = 'url-item';
-                newDiv.setAttribute('data-id', currentID);
-                currentID++;
+                if (shorturlcode) {
+                    const newDiv = document.createElement('div');
+                    newDiv.className = 'url-item';
+                    newDiv.setAttribute('data-id', currentID);
+                    currentID++;
 
-                const urlText = document.createElement('div');
-                urlText.className = 'url-text';
-                urlText.textContent = `https://short.bubllz.com/${shorturlcode} >> ${validUrl}`;
+                    const urlText = document.createElement('div');
+                    urlText.className = 'url-text';
+                    urlText.innerHTML = `
+                        <a href="https://short.bubllz.com/${shorturlcode}">https://short.bubllz.com/${shorturlcode}</a>
+                        &nbsp;&nbsp;&gt;&gt;&nbsp;&nbsp;
+                        <a href="${validUrl}">${validUrl}</a>
+                        <br><a href="https://short.bubllz.com/${shorturlcode}/analytics">View Analytics</a>
+                    `;
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete-btn';
+                    deleteButton.textContent = 'Delete';
 
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'delete-btn';
-                deleteButton.textContent = 'Delete';
+                    newDiv.appendChild(urlText);
+                    newDiv.appendChild(deleteButton);
+                    parentDiv.appendChild(newDiv);
 
-                newDiv.appendChild(urlText);
-                newDiv.appendChild(deleteButton);
-                parentDiv.appendChild(newDiv);
-                document.getElementById('url').value = '';
-                document.getElementById('shorturlcode').value = '';
+                    // Add event listener for the newly added delete button
+                    deleteButton.addEventListener('click', function () {
+                        const urlItem = this.closest('.url-item');
+                        const shortUrlCode = extractShortUrlCode(urlItem.querySelector('.url-text').innerHTML);
+                        if (!shortUrlCode) {
+                            alert('Could not extract the short URL code.');
+                            return;
+                        }
 
-                // Add event listener for the newly added delete button
-                deleteButton.addEventListener('click', function () {
-                    const urlItem = this.closest('.url-item');
-                    const shorturlcode = extractShortUrlCode(urlItem.querySelector('.url-text').textContent)
-                    if (!localStorage.getItem('token')) {
-                        alert('Please login to create or view your short URLs.');
-                        window.location.href = 'https://bubllz.com/login';
-                    }
-                    removeshorturl(shorturlcode, localStorage.getItem('token'), urlItem);
-                });
-            } else {
-                document.getElementById('shortenButton').disabled = false;
-                return alert('URL is invalid');
+                        if (!localStorage.getItem('token')) {
+                            alert('Please login to create or view your short URLs.');
+                            window.location.href = 'https://bubllz.com/login';
+                        }
+                        removeshorturl(shortUrlCode, localStorage.getItem('token'), urlItem);
+                    });
+                }
             }
-            alert('Short URL created successfully');
-            document.getElementById('shortenButton').disaled = false;
         });
     })
-    .catch(error => {
-        console.log('An error occurred:', error);
-    });
+    .catch(error => console.error(error));
