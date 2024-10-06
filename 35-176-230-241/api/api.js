@@ -39,7 +39,6 @@ let clients = [];
 let hatewords = [];
 let connection;
 let shorturlfilter = true;
-let successwithremovingshorturls = false;
 const excludedRoutes = [
     "/login",
     "/signup",
