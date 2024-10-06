@@ -27,7 +27,7 @@ app.use(
     cors({
         origin: "https://bubllz.com",
         methods: ["GET", "POST"],
-        allowedHeaders: ["Content-Type", "Authorization", "token"],
+        allowedHeaders: ["Content-Type", "Authorization", "token", "shorturl"],
     })
 );
 
@@ -241,11 +241,26 @@ app.get("/shorturlanalytics", (req, res) => {
                 return res.status(500).json({ error: "Database error" });
             }
             if (results.length === 0) {
-                return res.status(404).json({ error: "Short URL not found" });
+                connection.query(
+                    `SELECT * FROM shorturls WHERE shorturl = ?`,
+                    [shorturl],
+                    (err, results) => {
+                        if (err) {
+                            console.error("Database query error:", err.stack);
+                            return res.status(500).json({ error: "Database error" });
+                        }
+                        if (results.length === 0) {
+                            return res.status(404).json({ error: "Short URL not found" });
+                        } else {
+                            return res.status(201).json({ message: "No analytics found for this short URL" });
+                        }
+                    }
+                );
+            } else {
+                return res.status(200).json({ analytics: results });
             }
-            return res.status(200).json({ message: results });
         }
-    )
+    );
 });
 
 app.post("/signup", async (req, res) => {
