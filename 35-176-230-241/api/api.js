@@ -227,7 +227,11 @@ app.get("/:shorturl", (req, res, next) => {
 });
 
 app.get("/shorturlanalytics", (req, res) => {
-    const { shorturl } = req.body.shorturl;
+    const shorturl = req.headers.shorturl;
+    if (!shorturl) {
+        return res.status(400).json({ error: "Short URL is required." });
+    }
+
     connection.query(
         `SELECT * FROM shorturlanalytics WHERE shorturl = ?`,
         [shorturl],
@@ -246,7 +250,9 @@ app.get("/shorturlanalytics", (req, res) => {
 
 app.post("/signup", async (req, res) => {
     const userData = req.body;
-
+    if (!userData || !userData.FirstName || !userData.LastName || !userData.Username || !userData.Password) {
+        return res.status(400).json({ error: "First name, last name, username, and password are required." });
+    }
     try {
         // Hash the password before storing it
         const hashedPassword = await bcrypt.hash(userData.Password, 10);
@@ -293,6 +299,9 @@ app.post("/signup", async (req, res) => {
 
 app.post("/login", (req, res) => {
     const userData = req.body;
+    if (!userData || !userData.Username || !userData.Password) {
+        return res.status(400).json({ error: "Username and password are required." });
+    }
 
     connection.query(
         "SELECT * FROM Users WHERE Username = ?",
@@ -329,6 +338,12 @@ app.post("/login", (req, res) => {
 app.post("/message", (req, res) => {
     const messageData = req.body.message;
     const token = req.headers.token;
+    if (!token) {
+        return res.status(400).json({ error: "Token is required." });
+    }
+    if (!messageData) {
+        return res.status(402).json({ error: "Message is required." });
+    }
 
     console.log("Received token:", token);
     console.log("Received message:", messageData);
@@ -376,15 +391,19 @@ app.get("/poll", (req, res) => {
 });
 
 app.post("/getattrs", async (req, res) => {
-    const {
-        myattribute1,
-        lvl1,
-        myattribute2,
-        lvl2,
-        crimsonislepeicetocheckapi,
-        minecraftarmourpeicetocheckapi,
-    } = req.body;
-
+    try {
+        const {
+            myattribute1,
+            lvl1,
+            myattribute2,
+            lvl2,
+            crimsonislepeicetocheckapi,
+            minecraftarmourpeicetocheckapi,
+        } = req.body;
+    }
+    catch (err) {
+        return res.status(400).json({ error: "Missing required parameters" });
+    }
     try {
         const uuid = await retrieveAuctionsAndCheckAttrs(
             myattribute1,
@@ -510,6 +529,9 @@ app.post("/removeshorturl", (req, res) => {
     const shorturlremove = req.body.shorturl;
     if (!shorturlremove) {
         return res.status(400).json({ error: "Short URL is required." });
+    }
+    if (!token) {
+        return res.status(400).json({ error: "Token is required." });
     }
 
     // Check all the tokens urls
