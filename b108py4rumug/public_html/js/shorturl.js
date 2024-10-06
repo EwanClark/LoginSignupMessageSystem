@@ -181,7 +181,7 @@ fetch('https://api.bubllz.com/getshorturls', {
                 <a href="https://short.bubllz.com/${url.shorturl}">https://short.bubllz.com/${url.shorturl}</a>
                 &nbsp;&nbsp;&gt;&gt;&nbsp;&nbsp;
                 <a href="${url.redirecturl}">${url.redirecturl}</a>
-                <br><a href="https://short.bubllz.com/${url.shorturl}/analytics">View Analytics</a>
+                <br><a href="https://bubllz.com/analytics?shorturl=${url.shorturl}">View Analytics</a>
             `;
             const deleteButton = document.createElement('button');
             deleteButton.className = 'delete-btn';
@@ -233,7 +233,7 @@ fetch('https://api.bubllz.com/getshorturls', {
                         <a href="https://short.bubllz.com/${shorturlcode}">https://short.bubllz.com/${shorturlcode}</a>
                         &nbsp;&nbsp;&gt;&gt;&nbsp;&nbsp;
                         <a href="${validUrl}">${validUrl}</a>
-                        <br><a href="https://short.bubllz.com/${shorturlcode}/analytics">View Analytics</a>
+                        <br><a href="https://bubllz.com/analytics?shorturl=${shorturlcode}">View Analytics</a>
                     `;
                     const deleteButton = document.createElement('button');
                     deleteButton.className = 'delete-btn';
