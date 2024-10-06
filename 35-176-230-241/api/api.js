@@ -39,6 +39,7 @@ let clients = [];
 let hatewords = [];
 let connection;
 let shorturlfilter = true;
+let successwithremovingshorturls = false;
 const excludedRoutes = [
     "/login",
     "/signup",
@@ -524,11 +525,19 @@ app.post("/removeshorturl", (req, res) => {
                         if (err) {
                             console.error("Database query error:", err.stack);
                             return res.status(500).json({ error: "Database error" });
-                        } else {
-                            res.status(200).json({ message: "Short URL removed." });
                         }
                     }
                 );
+                connection.query(`DELETE FROM shorturlanalytics WHERE shorturl = ?`,
+                    [shorturlremove],
+                    (err) => {
+                        if (err) {
+                            console.error("Error deleting shorturlanalytics:", err.stack);
+                        }
+                        else {
+                            return res.status(200).json({ message: "Short url and analytics removed." });
+                        }
+                    });
             }
         }
     );
